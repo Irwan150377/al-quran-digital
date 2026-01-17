@@ -1,10 +1,46 @@
 "use client";
 
-import { ArrowLeft, User, Info, Heart, MapPin, Star } from "lucide-react";
+import { ArrowLeft, User, Info, Heart, MapPin, Star, Clock, Plus, Minus } from "lucide-react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
+import { useState, useEffect } from "react";
 
 export default function SettingsPage() {
+  const [adjustments, setAdjustments] = useState({
+    Fajr: -19,
+    Dhuhr: 3,
+    Asr: 3,
+    Maghrib: 2,
+    Isha: 3
+  });
+
+  useEffect(() => {
+    // Load saved adjustments from localStorage
+    const saved = localStorage.getItem("prayerAdjustments");
+    if (saved) {
+      setAdjustments(JSON.parse(saved));
+    }
+  }, []);
+
+  const updateAdjustment = (prayer: string, change: number) => {
+    const newAdjustments = {
+      ...adjustments,
+      [prayer]: adjustments[prayer as keyof typeof adjustments] + change
+    };
+    setAdjustments(newAdjustments);
+    localStorage.setItem("prayerAdjustments", JSON.stringify(newAdjustments));
+  };
+
+  const resetAdjustments = () => {
+    const defaultAdjustments = { Fajr: 0, Dhuhr: 0, Asr: 0, Maghrib: 0, Isha: 0 };
+    setAdjustments(defaultAdjustments);
+    localStorage.setItem("prayerAdjustments", JSON.stringify(defaultAdjustments));
+  };
+
+  const formatAdjustment = (minutes: number) => {
+    if (minutes === 0) return "0 min";
+    return minutes > 0 ? `+${minutes} min` : `${minutes} min`;
+  };
   return (
     <main className="min-h-screen bg-[#FDF8F3] dark:bg-gray-900 pb-20">
       <header className="sticky top-0 z-40 bg-[#FDF8F3]/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-[#E8DFD5] dark:border-gray-800">
@@ -32,6 +68,63 @@ export default function SettingsPage() {
             <Star size={16} fill="currentColor" />
             <Star size={16} fill="currentColor" />
             <Star size={16} fill="currentColor" />
+          </div>
+        </div>
+
+        {/* Prayer Time Adjustment */}
+        <div>
+          <h2 className="text-sm font-semibold text-[#8B7355] dark:text-gray-400 mb-3 uppercase tracking-wide">
+            Penyesuaian Waktu Sholat
+          </h2>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <Clock size={20} className="text-[#1ABC9C]" />
+              <div>
+                <h4 className="font-medium text-[#5D4E37] dark:text-white">Sesuaikan Waktu</h4>
+                <p className="text-xs text-[#8B7355] dark:text-gray-400">
+                  Sesuaikan dengan jadwal masjid lokal Anda
+                </p>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              {Object.entries(adjustments).map(([prayer, minutes]) => (
+                <div key={prayer} className="flex items-center justify-between">
+                  <span className="text-[#5D4E37] dark:text-gray-300 font-medium">
+                    {prayer === 'Fajr' ? 'Subuh' : 
+                     prayer === 'Dhuhr' ? 'Dzuhur' : 
+                     prayer === 'Asr' ? 'Ashar' : 
+                     prayer === 'Maghrib' ? 'Maghrib' : 'Isya'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => updateAdjustment(prayer, -1)}
+                      className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <span className="w-16 text-center text-sm font-mono text-[#1ABC9C] font-medium">
+                      {formatAdjustment(minutes)}
+                    </span>
+                    <button 
+                      onClick={() => updateAdjustment(prayer, 1)}
+                      className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button 
+                onClick={resetAdjustments}
+                className="w-full bg-[#1ABC9C] text-white py-2 px-4 rounded-lg hover:bg-[#16A085] transition-colors text-sm font-medium"
+              >
+                Reset ke Default
+              </button>
+            </div>
           </div>
         </div>
 

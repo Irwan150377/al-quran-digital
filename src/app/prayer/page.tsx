@@ -42,7 +42,30 @@ export default function PrayerPage() {
       const data = await response.json();
       
       if (data.code === 200) {
-        setPrayerTimes(data.data.timings);
+        // Get saved adjustments
+        const savedAdjustments = localStorage.getItem("prayerAdjustments");
+        const adjustments = savedAdjustments ? JSON.parse(savedAdjustments) : {
+          Fajr: -19, Dhuhr: 3, Asr: 3, Maghrib: 2, Isha: 3
+        };
+
+        // Apply adjustments to prayer times
+        const applyAdjustment = (timeStr: string, adjustment: number) => {
+          const [hours, minutes] = timeStr.split(":").map(Number);
+          const totalMinutes = hours * 60 + minutes + adjustment;
+          const adjustedHours = Math.floor(totalMinutes / 60) % 24;
+          const adjustedMinutes = totalMinutes % 60;
+          return `${adjustedHours.toString().padStart(2, '0')}:${adjustedMinutes.toString().padStart(2, '0')}`;
+        };
+
+        setPrayerTimes({
+          Fajr: applyAdjustment(data.data.timings.Fajr, adjustments.Fajr),
+          Sunrise: data.data.timings.Sunrise,
+          Dhuhr: applyAdjustment(data.data.timings.Dhuhr, adjustments.Dhuhr),
+          Asr: applyAdjustment(data.data.timings.Asr, adjustments.Asr),
+          Maghrib: applyAdjustment(data.data.timings.Maghrib, adjustments.Maghrib),
+          Isha: applyAdjustment(data.data.timings.Isha, adjustments.Isha),
+        });
+        
         setSelectedCity(city);
         setHijriDate(`${data.data.date.hijri.day} ${data.data.date.hijri.month.en} ${data.data.date.hijri.year} H`);
         // Save to localStorage
