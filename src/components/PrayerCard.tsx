@@ -38,33 +38,84 @@ export default function PrayerCard() {
   const [location, setLocation] = useState<string>("Jakarta");
   const [loading, setLoading] = useState(false);
 
-  const fetchPrayerTimes = async (lat: number, lng: number) => {
+  const fetchPrayerTimes = async (lat: number, lng: number, retryCount = 0) => {
+    const maxRetries = 3;
+    const methods = [2, 20, 3]; // Kemenag RI, ISNA, MWL
+    
     try {
       const today = new Date();
       const dateStr = `${today.getDate()}-${today.getMonth() + 1}-${today.getFullYear()}`;
       
-      const response = await fetch(
-        `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=2`
-      );
-      const data = await response.json();
-      
-      if (data.code === 200) {
-        setPrayerTimes({
-          Fajr: data.data.timings.Fajr.split(" ")[0],
-          Sunrise: data.data.timings.Sunrise.split(" ")[0],
-          Dhuhr: data.data.timings.Dhuhr.split(" ")[0],
-          Asr: data.data.timings.Asr.split(" ")[0],
-          Maghrib: data.data.timings.Maghrib.split(" ")[0],
-          Isha: data.data.timings.Isha.split(" ")[0],
-        });
-        
-        // Get city name from timezone
-        const timezone = data.data.meta.timezone || "Asia/Jakarta";
-        const city = timezone.split("/").pop()?.replace(/_/g, " ") || "Jakarta";
-        setLocation(city);
+      // Try different calculation methods
+      for (const method of methods) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          
+          const response = await fetch(
+            `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=${method}`,
+            { signal: controller.signal }
+          );
+          
+          clearTimeout(timeoutId);
+          
+          if (!response.ok) continue;
+          
+          const data = await response.json();
+          
+          if (data.code === 200 && data.data && data.data.timings) {
+            setPrayerTimes({
+              Fajr: data.data.timings.Fajr.split(" ")[0],
+              Sunrise: data.data.timings.Sunrise.split(" ")[0],
+              Dhuhr: data.data.timings.Dhuhr.split(" ")[0],
+              Asr: data.data.timings.Asr.split(" ")[0],
+              Maghrib: data.data.timings.Maghrib.split(" ")[0],
+              Isha: data.data.timings.Isha.split(" ")[0],
+            });
+            
+            // Get location from reverse geocoding or timezone
+            if (data.data.meta && data.data.meta.timezone) {
+              const timezone = data.data.meta.timezone;
+              const city = timezone.split("/").pop()?.replace(/_/g, " ") || "Indonesia";
+              setLocation(city);
+            } else {
+              // Try to get city name from coordinates
+              try {
+                const geoResponse = await fetch(
+                  `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=id`
+                );
+                const geoData = await geoResponse.json();
+                const city = geoData.address?.city || geoData.address?.town || geoData.address?.village || "Indonesia";
+                setLocation(city);
+              } catch {
+                setLocation("Indonesia");
+              }
+            }
+            
+            return; // Success, exit function
+          }
+        } catch (err) {
+          console.log(`Method ${method} failed:`, err);
+          continue; // Try next method
+        }
       }
+      
+      // If all methods failed, retry with exponential backoff
+      if (retryCount < maxRetries) {
+        const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+        console.log(`Retrying in ${delay}ms...`);
+        setTimeout(() => {
+          fetchPrayerTimes(lat, lng, retryCount + 1);
+        }, delay);
+      } else {
+        throw new Error("All API attempts failed");
+      }
+      
     } catch (error) {
       console.error("Error fetching prayer times:", error);
+      // Use default Jakarta times only as last resort
+      setPrayerTimes(defaultTimes);
+      setLocation("Jakarta (Default)");
     }
   };
 
@@ -74,21 +125,27 @@ export default function PrayerCard() {
     // Check if running on HTTPS or localhost (required for geolocation)
     const isSecure = window.location.protocol === 'https:' || 
                      window.location.hostname === 'localhost' ||
-                     window.location.hostname === '127.0.0.1';
+                     window.location.hostname === '127.0.0.1' ||
+                     window.location.hostname.includes('192.168');
     
     if ("geolocation" in navigator && isSecure) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          console.log("Geolocation success:", position.coords.latitude, position.coords.longitude);
           fetchPrayerTimes(position.coords.latitude, position.coords.longitude);
           setLoading(false);
         },
         (error) => {
-          console.log("Geolocation error:", error.message);
+          console.log("Geolocation error:", error.message, error.code);
           // Use default Jakarta coordinates
           fetchPrayerTimes(-6.2088, 106.8456);
           setLoading(false);
         },
-        { timeout: 15000, enableHighAccuracy: true, maximumAge: 300000 }
+        { 
+          timeout: 10000, 
+          enableHighAccuracy: false, // Changed to false for faster response
+          maximumAge: 600000 // 10 minutes cache
+        }
       );
     } else {
       // Fallback to Jakarta - geolocation not available or not secure context
