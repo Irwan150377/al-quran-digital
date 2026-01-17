@@ -1,26 +1,96 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@font-face {
+  font-family: 'KFGQPC Uthmanic Script HAFS';
+  src: url('https://cdn.jsdelivr.net/gh/nicholasadamou/quran-fonts@master/fonts/UthmanicHafs1Ver18.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  --primary: #1ABC9C;
+  --primary-dark: #16A085;
+  --secondary: #2C3E50;
+  --accent: #F39C12;
+  --background: #ffffff;
+  --foreground: #2C3E50;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0F1419;
+    --foreground: #ECF0F1;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', Arial, Helvetica, sans-serif;
+}
+
+/* Arabic Font - Uthmani with harakat */
+.font-uthmani {
+  font-family: 'Amiri Quran', 'Amiri', 'Traditional Arabic', 'Scheherazade New', serif !important;
+  direction: rtl;
+  text-align: right;
+  line-height: 2.8;
+  word-spacing: 8px;
+  font-feature-settings: "liga" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-arabic {
+  font-family: 'Amiri', 'Traditional Arabic', serif !important;
+  direction: rtl;
+  text-align: right;
+  line-height: 2.2;
+  font-feature-settings: "liga" 1;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 3px;
+}
+
+/* Bottom Navigation Safe Area */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+/* Quiz animations */
+@keyframes correct {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes wrong {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.animate-correct {
+  animation: correct 0.3s ease-in-out;
+}
+
+.animate-wrong {
+  animation: wrong 0.3s ease-in-out;
 }

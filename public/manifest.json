@@ -1,0 +1,27 @@
+{
+  "name": "Al-Quran Digital",
+  "short_name": "Al-Quran",
+  "description": "Aplikasi Al-Quran Digital dengan Waktu Sholat, Audio, dan Kuis Juz 30",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1ABC9C",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "lifestyle"],
+  "lang": "id",
+  "dir": "ltr"
+}
