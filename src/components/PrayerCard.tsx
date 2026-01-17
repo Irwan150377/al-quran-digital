@@ -44,7 +44,7 @@ export default function PrayerCard() {
       const dateStr = `${today.getDate()}-${today.getMonth() + 1}-${today.getFullYear()}`;
       
       const response = await fetch(
-        `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=20`
+        `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=2`
       );
       const data = await response.json();
       
