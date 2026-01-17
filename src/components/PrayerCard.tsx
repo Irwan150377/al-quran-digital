@@ -1,7 +1,8 @@
 "use client";
 
-import { Clock, MapPin, RefreshCw } from "lucide-react";
+import { Clock, MapPin, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
+import { indonesiaCities, type City } from "@/lib/indonesia-cities";
 
 interface PrayerTimes {
   Fajr: string;
@@ -35,128 +36,70 @@ export default function PrayerCard() {
   const [prayerTimes, setPrayerTimes] = useState<PrayerTimes>(defaultTimes);
   const [nextPrayer, setNextPrayer] = useState<string>("Dzuhur");
   const [countdown, setCountdown] = useState<string>("");
-  const [location, setLocation] = useState<string>("Jakarta");
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
+  const [showCityModal, setShowCityModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const fetchPrayerTimes = async (lat: number, lng: number, retryCount = 0) => {
-    const maxRetries = 3;
-    const methods = [2, 20, 3]; // Kemenag RI, ISNA, MWL
-    
+  const fetchPrayerTimes = async (city: City) => {
+    setLoading(true);
     try {
       const today = new Date();
       const dateStr = `${today.getDate()}-${today.getMonth() + 1}-${today.getFullYear()}`;
       
-      // Try different calculation methods
-      for (const method of methods) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 8000);
-          
-          const response = await fetch(
-            `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=${method}`,
-            { signal: controller.signal }
-          );
-          
-          clearTimeout(timeoutId);
-          
-          if (!response.ok) continue;
-          
-          const data = await response.json();
-          
-          if (data.code === 200 && data.data && data.data.timings) {
-            setPrayerTimes({
-              Fajr: data.data.timings.Fajr.split(" ")[0],
-              Sunrise: data.data.timings.Sunrise.split(" ")[0],
-              Dhuhr: data.data.timings.Dhuhr.split(" ")[0],
-              Asr: data.data.timings.Asr.split(" ")[0],
-              Maghrib: data.data.timings.Maghrib.split(" ")[0],
-              Isha: data.data.timings.Isha.split(" ")[0],
-            });
-            
-            // Get location from reverse geocoding or timezone
-            if (data.data.meta && data.data.meta.timezone) {
-              const timezone = data.data.meta.timezone;
-              const city = timezone.split("/").pop()?.replace(/_/g, " ") || "Indonesia";
-              setLocation(city);
-            } else {
-              // Try to get city name from coordinates
-              try {
-                const geoResponse = await fetch(
-                  `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=id`
-                );
-                const geoData = await geoResponse.json();
-                const city = geoData.address?.city || geoData.address?.town || geoData.address?.village || "Indonesia";
-                setLocation(city);
-              } catch {
-                setLocation("Indonesia");
-              }
-            }
-            
-            return; // Success, exit function
-          }
-        } catch (err) {
-          console.log(`Method ${method} failed:`, err);
-          continue; // Try next method
-        }
-      }
+      // Use Kemenag RI method (method 2) for Indonesia
+      const response = await fetch(
+        `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${city.lat}&longitude=${city.lng}&method=2`
+      );
       
-      // If all methods failed, retry with exponential backoff
-      if (retryCount < maxRetries) {
-        const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
-        console.log(`Retrying in ${delay}ms...`);
-        setTimeout(() => {
-          fetchPrayerTimes(lat, lng, retryCount + 1);
-        }, delay);
-      } else {
-        throw new Error("All API attempts failed");
-      }
+      const data = await response.json();
       
+      if (data.code === 200 && data.data && data.data.timings) {
+        setPrayerTimes({
+          Fajr: data.data.timings.Fajr.split(" ")[0],
+          Sunrise: data.data.timings.Sunrise.split(" ")[0],
+          Dhuhr: data.data.timings.Dhuhr.split(" ")[0],
+          Asr: data.data.timings.Asr.split(" ")[0],
+          Maghrib: data.data.timings.Maghrib.split(" ")[0],
+          Isha: data.data.timings.Isha.split(" ")[0],
+        });
+        
+        setSelectedCity(city);
+        // Save to localStorage
+        localStorage.setItem("selectedCity", JSON.stringify(city));
+      }
     } catch (error) {
       console.error("Error fetching prayer times:", error);
-      // Use default Jakarta times only as last resort
-      setPrayerTimes(defaultTimes);
-      setLocation("Jakarta (Default)");
-    }
-  };
-
-  const getLocation = () => {
-    setLoading(true);
-    
-    // Check if running on HTTPS or localhost (required for geolocation)
-    const isSecure = window.location.protocol === 'https:' || 
-                     window.location.hostname === 'localhost' ||
-                     window.location.hostname === '127.0.0.1' ||
-                     window.location.hostname.includes('192.168');
-    
-    if ("geolocation" in navigator && isSecure) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          console.log("Geolocation success:", position.coords.latitude, position.coords.longitude);
-          fetchPrayerTimes(position.coords.latitude, position.coords.longitude);
-          setLoading(false);
-        },
-        (error) => {
-          console.log("Geolocation error:", error.message, error.code);
-          // Use default Jakarta coordinates
-          fetchPrayerTimes(-6.2088, 106.8456);
-          setLoading(false);
-        },
-        { 
-          timeout: 10000, 
-          enableHighAccuracy: false, // Changed to false for faster response
-          maximumAge: 600000 // 10 minutes cache
-        }
-      );
-    } else {
-      // Fallback to Jakarta - geolocation not available or not secure context
-      console.log("Using default location (Jakarta) - geolocation requires HTTPS");
-      fetchPrayerTimes(-6.2088, 106.8456);
+    } finally {
       setLoading(false);
     }
   };
 
+  const handleCitySelect = (city: City) => {
+    fetchPrayerTimes(city);
+    setShowCityModal(false);
+    setSearchQuery("");
+  };
+
+  const filteredCities = indonesiaCities.filter(city =>
+    city.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    city.province.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   useEffect(() => {
-    getLocation();
+    // Load saved city from localStorage
+    const savedCity = localStorage.getItem("selectedCity");
+    if (savedCity) {
+      const city = JSON.parse(savedCity) as City;
+      setSelectedCity(city);
+      fetchPrayerTimes(city);
+    } else {
+      // Default to Jakarta
+      const jakarta = indonesiaCities.find(c => c.id === "jakarta");
+      if (jakarta) {
+        fetchPrayerTimes(jakarta);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -194,32 +137,88 @@ export default function PrayerCard() {
   }, [prayerTimes]);
 
   return (
-    <div className="bg-gradient-to-r from-[#1ABC9C] to-[#16A085] rounded-2xl p-5 text-white shadow-lg">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 opacity-90">
-          <MapPin size={16} />
-          <span className="text-sm">{location}, Indonesia</span>
+    <>
+      <div className="bg-gradient-to-r from-[#1ABC9C] to-[#16A085] rounded-2xl p-5 text-white shadow-lg">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2 opacity-90">
+            <MapPin size={16} />
+            <span className="text-sm">{selectedCity?.name || "Pilih Kota"}, Indonesia</span>
+          </div>
+          <button 
+            onClick={() => setShowCityModal(true)}
+            className="p-1.5 rounded-full hover:bg-white/20 transition-colors"
+            title="Ganti Kota"
+          >
+            <Settings size={16} />
+          </button>
         </div>
-        <button 
-          onClick={getLocation}
-          disabled={loading}
-          className="p-1.5 rounded-full hover:bg-white/20 transition-colors"
-        >
-          <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-        </button>
+        
+        <div className="mb-2">
+          <p className="text-sm opacity-80">Waktu sholat berikutnya</p>
+          <h2 className="text-2xl font-bold">
+            {prayerNames[nextPrayer]} - {prayerTimes[nextPrayer as keyof PrayerTimes]}
+          </h2>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Clock size={16} />
+          <span className="text-sm">{countdown}</span>
+        </div>
       </div>
-      
-      <div className="mb-2">
-        <p className="text-sm opacity-80">Waktu sholat berikutnya</p>
-        <h2 className="text-2xl font-bold">
-          {prayerNames[nextPrayer]} - {prayerTimes[nextPrayer as keyof PrayerTimes]}
-        </h2>
-      </div>
-      
-      <div className="flex items-center gap-2">
-        <Clock size={16} />
-        <span className="text-sm">{countdown}</span>
-      </div>
-    </div>
+
+      {/* City Selection Modal */}
+      {showCityModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col">
+            <div className="p-4 border-b">
+              <h3 className="text-lg font-bold text-gray-800 mb-3">Pilih Kota</h3>
+              <input
+                type="text"
+                placeholder="Cari kota atau provinsi..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1ABC9C] text-gray-800"
+                autoFocus
+              />
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4">
+              {filteredCities.length > 0 ? (
+                <div className="space-y-1">
+                  {filteredCities.map((city) => (
+                    <button
+                      key={city.id}
+                      onClick={() => handleCitySelect(city)}
+                      className={`w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors ${
+                        selectedCity?.id === city.id ? "bg-[#1ABC9C]/10 border-2 border-[#1ABC9C]" : ""
+                      }`}
+                    >
+                      <div className="font-medium text-gray-800">{city.name}</div>
+                      <div className="text-sm text-gray-500">{city.province}</div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  Kota tidak ditemukan
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 border-t">
+              <button
+                onClick={() => {
+                  setShowCityModal(false);
+                  setSearchQuery("");
+                }}
+                className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
