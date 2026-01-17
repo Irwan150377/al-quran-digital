@@ -7,11 +7,11 @@ import { useState, useEffect } from "react";
 
 export default function SettingsPage() {
   const [adjustments, setAdjustments] = useState({
-    Fajr: -19,
-    Dhuhr: 3,
-    Asr: 3,
-    Maghrib: 2,
-    Isha: 3
+    Fajr: -19,    // 05:22 -> 05:03
+    Dhuhr: 3,     // 12:24 -> 12:27
+    Asr: 3,       // 15:49 -> 15:52
+    Maghrib: 2,   // 18:27 -> 18:29
+    Isha: 16      // 19:27 -> 19:43
   });
 
   useEffect(() => {

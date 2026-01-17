@@ -45,14 +45,25 @@ export default function PrayerPage() {
         // Get saved adjustments
         const savedAdjustments = localStorage.getItem("prayerAdjustments");
         const adjustments = savedAdjustments ? JSON.parse(savedAdjustments) : {
-          Fajr: -19, Dhuhr: 3, Asr: 3, Maghrib: 2, Isha: 3
+          Fajr: -19, Dhuhr: 3, Asr: 3, Maghrib: 2, Isha: 16
         };
 
         // Apply adjustments to prayer times
         const applyAdjustment = (timeStr: string, adjustment: number) => {
           const [hours, minutes] = timeStr.split(":").map(Number);
-          const totalMinutes = hours * 60 + minutes + adjustment;
-          const adjustedHours = Math.floor(totalMinutes / 60) % 24;
+          let totalMinutes = hours * 60 + minutes + adjustment;
+          
+          // Handle negative minutes (wrap to previous day)
+          if (totalMinutes < 0) {
+            totalMinutes = 1440 + totalMinutes; // 1440 = 24 hours in minutes
+          }
+          
+          // Handle overflow (wrap to next day)
+          if (totalMinutes >= 1440) {
+            totalMinutes = totalMinutes - 1440;
+          }
+          
+          const adjustedHours = Math.floor(totalMinutes / 60);
           const adjustedMinutes = totalMinutes % 60;
           return `${adjustedHours.toString().padStart(2, '0')}:${adjustedMinutes.toString().padStart(2, '0')}`;
         };
