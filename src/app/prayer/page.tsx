@@ -1,6 +1,7 @@
 "use client";
 
 import BottomNav from "@/components/BottomNav";
+import Link from "next/link";
 import { MapPin, Compass, Navigation, Check, Clock, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { indonesiaCities, type City } from "@/lib/indonesia-cities";
@@ -219,14 +220,14 @@ export default function PrayerPage() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-3">
-          <button className="flex items-center justify-center gap-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+          <Link href="/qibla" className="flex items-center justify-center gap-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
             <Compass size={24} className="text-[#1ABC9C]" />
             <span className="font-medium text-gray-700 dark:text-gray-300">Arah Kiblat</span>
-          </button>
-          <button className="flex items-center justify-center gap-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+          </Link>
+          <Link href="/mosque" className="flex items-center justify-center gap-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
             <Navigation size={24} className="text-[#1ABC9C]" />
             <span className="font-medium text-gray-700 dark:text-gray-300">Cari Masjid</span>
-          </button>
+          </Link>
         </div>
       </div>
 
